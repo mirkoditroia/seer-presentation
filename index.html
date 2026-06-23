@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>THE DIGITAL SEER // Presentazione installazione</title>
+
+<!--
+  ============================================================================
+   THE DIGITAL SEER // CHIROMANTE  —  PRESENTAZIONE ANIMATA
+   ----------------------------------------------------------------------------
+   COME MODIFICARLA (semplice):
+   1. TESTI  -> cerca i blocchi <section class="slide"> qui sotto e cambia il
+                testo che vedi. Tutto e' in chiaro, non serve toccare il codice.
+   2. COLORI -> tutti i colori dell'installazione sono nelle variabili :root
+                (sezione CSS qui sotto, cercala con "PALETTE").
+   3. ORDINE -> per spostare una slide, sposta il suo intero blocco
+                <section class="slide"> ... </section>.
+   4. DURATA -> in modalita' autoplay ogni slide resta data-duration ms
+                (attributo sul tag <section>). Default 9000.
+   5. IMMAGINI-> stanno nella cartella ./assets . Sostituiscile mantenendo lo
+                stesso nome file, oppure cambia il src nell'<img>.
+
+   COMANDI durante la presentazione:
+   ->  /  SPAZIO  / click  = avanti        <-  = indietro
+   A   = play/pausa automatico             F = schermo intero
+   1..9 = vai alla slide                   HOME/END = prima/ultima
+
+   ESPORTA PDF (comando esterno, dalla cartella presentation/):
+   python export_pdf.py
+   python export_pdf.py -o mio_deck.pdf --wait 2000
+   export_pdf.bat
+   (prima volta: pip install playwright && playwright install chromium)
+  ============================================================================
+-->
+
+<style>
+/* ==========================================================================
+   PALETTE & FONT  (presi 1:1 dall'installazione - frontend/styles.css)
+   ========================================================================== */
+:root{
+  --bg-deep:      #1A0B2E;
+  --bg-mid:       #2D004F;
+  --bg-dim:       #14071F;
+  --neon-yellow:  #FAFF00;
+  --neon-magenta: #BC13FE;
+  --magenta-soft: #82228A;
+  --magenta-dim:  #46086A;
+  --orange-hot:   #FF8C00;
+  --red-hot:      #FF1E1E;
+  --cyan-glitch:  #00FFD4;
+  --green-ok:     #00FF6A;
+  --text-faint:   #6A4DAA;
+
+  --font-title: "Press Start 2P", monospace;
+  --font-mono:  "Share Tech Mono", "Courier New", monospace;
+}
+
+@font-face{
+  font-family:"Press Start 2P";
+  src:url("./fonts/PressStart2P-Regular.ttf") format("truetype");
+  font-display:swap;
+}
+@font-face{
+  font-family:"Share Tech Mono";
+  src:url("./fonts/ShareTechMono-Regular.ttf") format("truetype");
+  font-display:swap;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+
+html,body{
+  width:100%; height:100%;
+  background:#000;
+  color:var(--neon-yellow);
+  font-family:var(--font-mono);
+  overflow:hidden;
+  -webkit-font-smoothing:none;
+  user-select:none;
+}
+body{ display:grid; place-items:center; }
+
+/* ==========================================================================
+   PALCO 16:9 con letterbox nero (come il kiosk)
+   ========================================================================== */
+.deck{
+  position:relative;
+  aspect-ratio:16/9;
+  width:min(100vw, calc(100vh * 16 / 9));
+  height:min(100vh, calc(100vw * 9 / 16));
+  overflow:hidden;
+  background:
+    radial-gradient(ellipse at center, rgba(70,8,106,.55) 0%, rgba(20,7,31,1) 72%),
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+}
+
+/* ---- canvas effetti di sfondo (matrix / particelle) ---- */
+#fx{ position:absolute; inset:0; z-index:1; pointer-events:none; opacity:.55; }
+
+/* ---- rumore CRT ---- */
+.bg-noise{
+  position:absolute; inset:0; z-index:2; pointer-events:none;
+  opacity:.08; mix-blend-mode:screen;
+  background-image:
+    repeating-radial-gradient(circle at 10% 20%, rgba(188,19,254,.15) 0 1px, transparent 1px 4px),
+    repeating-radial-gradient(circle at 80% 70%, rgba(250,255,0,.10) 0 1px, transparent 1px 5px);
+  animation:noiseShift .6s steps(2) infinite;
+}
+@keyframes noiseShift{
+  0%{transform:translate(0,0)} 50%{transform:translate(-1px,1px)} 100%{transform:translate(1px,-1px)}
+}
+
+/* ---- scanlines ---- */
+.scanlines{
+  position:absolute; inset:0; z-index:90; pointer-events:none;
+  background-image:repeating-linear-gradient(to bottom,
+    rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,.35) 3px, rgba(0,0,0,0) 4px);
+}
+/* ---- vignettatura ---- */
+.vignette{
+  position:absolute; inset:0; z-index:3; pointer-events:none;
+  box-shadow:inset 0 0 180px 40px rgba(10,2,20,.9);
+}
+
+/* ---- angoli stile poster ---- */
+.corner{ position:absolute; width:38px; height:38px; z-index:95; pointer-events:none; }
+.corner::before,.corner::after{ content:""; position:absolute; background:var(--neon-magenta);
+  box-shadow:0 0 6px rgba(188,19,254,.6); }
+.corner::before{ width:38px; height:4px; }
+.corner::after { width:4px; height:38px; }
+.corner.tl{ top:16px; left:16px; } .corner.tl::before,.corner.tl::after{ top:0; left:0; }
+.corner.tr{ top:16px; right:16px; } .corner.tr::before,.corner.tr::after{ top:0; right:0; }
+.corner.bl{ bottom:16px; left:16px; } .corner.bl::before,.corner.bl::after{ bottom:0; left:0; }
+.corner.br{ bottom:16px; right:16px; } .corner.br::before,.corner.br::after{ bottom:0; right:0; }
+
+/* ==========================================================================
+   SLIDE
+   ========================================================================== */
+.stage{ position:absolute; inset:0; z-index:10; }
+
+.slide{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  padding:clamp(36px,5vw,72px);
+  opacity:0; visibility:hidden;
+  transform:translateY(14px);
+  transition:opacity .5s ease, transform .5s ease;
+  pointer-events:none;
+}
+.slide.is-active{
+  opacity:1; visibility:visible; transform:none;
+  pointer-events:auto;
+}
+/* glitch d'ingresso */
+.slide.is-active.enter{ animation:slideGlitch .45s steps(2,end) 1; }
+@keyframes slideGlitch{
+  0%{ clip-path:inset(0 0 70% 0); transform:translateX(-6px); filter:hue-rotate(40deg); }
+  30%{ clip-path:inset(40% 0 30% 0); transform:translateX(5px); }
+  60%{ clip-path:inset(70% 0 0 0); transform:translateX(-3px); }
+  100%{ clip-path:inset(0 0 0 0); transform:none; filter:none; }
+}
+
+/* ---- intestazione di sezione ---- */
+.eyebrow{
+  font-family:var(--font-mono);
+  color:var(--neon-magenta);
+  letter-spacing:4px;
+  font-size:clamp(13px,1.4vw,18px);
+  margin-bottom:14px;
+}
+.eyebrow .blink{ animation:blink 1s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+
+h1.title{
+  font-family:var(--font-title);
+  color:var(--neon-yellow);
+  line-height:1.15;
+  letter-spacing:2px;
+  position:relative;
+  text-shadow:3px 3px 0 var(--neon-magenta), 0 0 18px rgba(250,255,0,.25);
+}
+h1.title.xl{ font-size:clamp(30px,5.2vw,72px); }
+h1.title.lg{ font-size:clamp(24px,3.4vw,46px); }
+/* ghost glitch sul titolo (come HUD) */
+h1.title[data-text]::after{
+  content:attr(data-text); position:absolute; inset:0; color:transparent;
+  text-shadow:-2px 0 var(--neon-magenta), 2px 0 var(--cyan-glitch);
+  mix-blend-mode:screen; animation:titleGlitch 3.6s infinite steps(1);
+}
+@keyframes titleGlitch{
+  0%,92%{ transform:translate(0,0); opacity:0; }
+  92.5%{ transform:translate(-2px,0); opacity:.7; clip-path:inset(10% 0 65% 0); }
+  93.5%{ transform:translate(2px,-1px); opacity:.7; clip-path:inset(40% 0 30% 0); }
+  94.5%{ transform:translate(-1px,1px); opacity:.7; clip-path:inset(70% 0 10% 0); }
+  96%{ opacity:0; }
+}
+
+.sub{ font-family:var(--font-mono); color:var(--neon-magenta); letter-spacing:3px;
+  font-size:clamp(13px,1.5vw,20px); margin-top:14px; }
+.lead{ font-family:var(--font-mono); color:#EAD9FF; line-height:1.65;
+  font-size:clamp(15px,1.5vw,21px); max-width:60ch; }
+.muted{ color:var(--text-faint); }
+.yellow{ color:var(--neon-yellow); }
+.mag{ color:var(--neon-magenta); }
+.cy{ color:var(--cyan-glitch); }
+
+.divider{ width:100%; height:2px; margin:18px 0;
+  background-image:repeating-linear-gradient(to right, var(--neon-magenta) 0 14px, transparent 14px 24px); }
+
+.spacer{ flex:1 1 auto; }
+
+/* righe a due colonne */
+.cols{ display:flex; gap:clamp(24px,3vw,52px); align-items:center; flex:1 1 auto; min-height:0; }
+.cols .col{ flex:1 1 0; min-width:0; }
+.col-img{ display:flex; align-items:center; justify-content:center; }
+.col-img img{ max-width:100%; max-height:62vh; object-fit:contain;
+  border:3px solid var(--neon-magenta); box-shadow:0 0 26px rgba(188,19,254,.35), 0 0 60px rgba(0,0,0,.6); }
+.col-img.bare img{ border:none; box-shadow:0 0 40px rgba(188,19,254,.25); }
+.col-img.dual img{ max-height:31vh; }
+
+/* footer comune slide */
+.foot{ position:absolute; left:clamp(36px,5vw,72px); right:clamp(36px,5vw,72px);
+  bottom:clamp(20px,2.4vw,34px); display:flex; justify-content:space-between;
+  font-family:var(--font-mono); font-size:clamp(11px,1.1vw,15px);
+  color:var(--neon-magenta); letter-spacing:2px;
+  border-top:2px dashed var(--magenta-soft); padding-top:10px; }
+.foot .dim{ color:var(--text-faint); }
+
+/* chips / keyword */
+.chips{ display:flex; gap:14px; flex-wrap:wrap; margin-top:24px; }
+.chip{ font-family:var(--font-title); font-size:clamp(10px,1vw,14px);
+  color:var(--neon-yellow); border:2px solid var(--neon-magenta);
+  padding:12px 16px; letter-spacing:1px; background:rgba(70,8,106,.25);
+  box-shadow:0 0 12px rgba(188,19,254,.25); }
+
+/* terminale boot */
+.term{ font-family:var(--font-mono); font-size:clamp(13px,1.4vw,19px);
+  color:var(--green-ok); line-height:1.9; white-space:pre-wrap; }
+.term .p{ color:var(--neon-magenta); }
+.cursorbox{ display:inline-block; width:.62em; height:1.05em; background:var(--neon-yellow);
+  vertical-align:-2px; margin-left:2px; animation:blink .8s steps(1) infinite; }
+
+/* ==========================================================================
+   PIPELINE / RITUALE (slide passi)
+   ========================================================================== */
+.flow{ display:flex; align-items:stretch; gap:12px; flex-wrap:nowrap;
+  flex:1 1 auto; min-height:0; margin:18px 0 8px; }
+.step{ flex:1 1 0; min-width:0; border:2px solid var(--magenta-soft);
+  border-top:5px solid var(--neon-magenta);
+  background:linear-gradient(180deg, rgba(45,0,79,.55) 0%, rgba(20,7,31,.55) 100%);
+  padding:22px 16px 18px; position:relative; overflow:hidden;
+  display:flex; flex-direction:column; gap:12px;
+  box-shadow:0 0 18px rgba(188,19,254,.12);
+  opacity:0; transform:translateY(12px); }
+.slide.is-active .step{ animation:stepIn .5s ease forwards; }
+@keyframes stepIn{ to{ opacity:1; transform:none; } }
+.step .n{ font-family:var(--font-title); font-size:clamp(12px,1.2vw,16px); color:var(--neon-magenta);
+  letter-spacing:1px; }
+.step .t{ font-family:var(--font-title); font-size:clamp(11px,1.05vw,15px);
+  color:var(--neon-yellow); margin:2px 0; line-height:1.5; text-shadow:2px 2px 0 rgba(188,19,254,.5); }
+.step .d{ font-family:var(--font-mono); font-size:clamp(12px,1.1vw,16px); color:#CBB8E8; line-height:1.5; }
+/* numero watermark che riempie il vuoto in basso */
+.step .wm{ position:absolute; right:6px; bottom:-22px; z-index:0; pointer-events:none;
+  font-family:var(--font-title); font-size:clamp(46px,6vw,86px); line-height:1;
+  color:rgba(250,255,0,.07); text-shadow:0 0 1px rgba(188,19,254,.2); }
+.step > *{ position:relative; z-index:1; }
+.step .d{ margin-top:auto; }
+.step::after{ content:">"; position:absolute; right:-13px; top:50%; transform:translateY(-50%);
+  color:var(--neon-magenta); font-family:var(--font-title); font-size:16px; z-index:3;
+  text-shadow:0 0 8px rgba(188,19,254,.7); }
+.step:last-child::after{ content:""; }
+
+/* ==========================================================================
+   STAT BARS (come poster)
+   ========================================================================== */
+.stats{ display:flex; flex-direction:column; gap:clamp(10px,1.4vw,18px); width:100%; }
+.stat .stat__head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.stat__label{ font-family:var(--font-title); font-size:clamp(10px,1.05vw,15px); color:var(--neon-yellow);
+  letter-spacing:1px; }
+.stat__sub{ font-family:var(--font-mono); font-size:clamp(10px,.95vw,13px); color:var(--text-faint);
+  letter-spacing:1px; }
+.stat__val{ font-family:var(--font-title); font-size:clamp(11px,1.1vw,16px); color:var(--neon-yellow); }
+.stat__track{ position:relative; height:clamp(16px,1.9vw,26px); background:rgba(20,7,31,.85);
+  border:2px solid var(--magenta-dim); overflow:hidden; }
+.stat__fill{ position:absolute; inset:0 100% 0 0; width:0;
+  background:linear-gradient(90deg, var(--neon-yellow) 0%, var(--orange-hot) 55%, var(--red-hot) 100%);
+  transition:width 1.1s cubic-bezier(.2,.8,.2,1); }
+/* griglia a 10 celle sopra la barra */
+.stat__track::after{ content:""; position:absolute; inset:0; pointer-events:none;
+  background-image:repeating-linear-gradient(to right, transparent 0 calc(10% - 2px),
+    var(--bg-dim) calc(10% - 2px), var(--bg-dim) 10%); }
+.stat.dom .stat__track{ box-shadow:0 0 14px rgba(188,19,254,.6); border-color:var(--neon-magenta); }
+.stat.dom .stat__fill{ background:linear-gradient(90deg, var(--neon-yellow), var(--neon-magenta));
+  animation:domPulse 1.6s ease-in-out infinite; }
+@keyframes domPulse{ 50%{ filter:brightness(1.35); } }
+
+/* card utente (rivelazione) */
+.idcard{ border:3px solid var(--neon-magenta); background:rgba(20,7,31,.6);
+  padding:18px 20px; box-shadow:0 0 22px rgba(188,19,254,.3); }
+.idcard .k{ font-family:var(--font-mono); color:var(--neon-magenta); letter-spacing:2px; font-size:13px; }
+.idcard .user{ font-family:var(--font-title); color:var(--neon-yellow); font-size:clamp(20px,2.4vw,34px);
+  margin:6px 0 16px; }
+.idcard .arch{ font-family:var(--font-title); color:var(--neon-yellow); font-size:clamp(18px,2.2vw,30px);
+  text-shadow:2px 2px 0 var(--neon-magenta); }
+
+/* blocco profezia terminale */
+.prophecy{ border:2px solid var(--magenta-soft); background:rgba(10,3,18,.7); padding:16px 18px; margin-top:14px; }
+.prophecy .hdr{ font-family:var(--font-mono); color:var(--neon-magenta); letter-spacing:2px;
+  font-size:12px; margin-bottom:10px; }
+.prophecy .txt{ font-family:var(--font-mono); color:#EAD9FF; line-height:1.7;
+  font-size:clamp(13px,1.35vw,19px); min-height:4em; }
+
+/* sigillo wisp */
+.sigil{ display:flex; align-items:center; gap:14px; margin-top:16px; }
+.sigil img{ width:clamp(74px,8vw,110px); height:auto; image-rendering:pixelated;
+  border:2px solid var(--neon-magenta); box-shadow:0 0 16px rgba(188,19,254,.4); }
+.sigil .cap .l{ font-family:var(--font-mono); color:var(--neon-magenta); letter-spacing:2px; font-size:12px; }
+.sigil .cap .g{ font-family:var(--font-title); color:var(--neon-yellow); font-size:13px; margin-top:6px; }
+
+/* lista eventi */
+.checks{ list-style:none; display:flex; flex-direction:column; gap:12px; margin-top:6px; }
+.checks li{ font-family:var(--font-mono); font-size:clamp(14px,1.4vw,19px); color:#EAD9FF; line-height:1.4;
+  padding-left:30px; position:relative; }
+.checks li::before{ content:">"; position:absolute; left:0; color:var(--neon-yellow);
+  font-family:var(--font-title); font-size:14px; }
+.checks li b{ color:var(--neon-yellow); font-weight:normal; }
+
+/* QR finale */
+.qrs{ display:flex; gap:40px; flex-wrap:wrap; margin-top:10px; }
+.qr{ display:flex; flex-direction:column; align-items:center; gap:16px; }
+.qr img{ display:block; width:clamp(120px,13vw,168px); height:auto; border:4px solid var(--neon-magenta);
+  box-shadow:0 0 22px rgba(188,19,254,.4); }
+.qr .lab{ font-family:var(--font-title); color:var(--neon-yellow); font-size:clamp(10px,.95vw,12px);
+  line-height:1.7; letter-spacing:1px; text-align:center;
+  padding:8px 12px; background:rgba(10,3,18,.82); border:2px solid var(--magenta-soft);
+  text-shadow:1px 1px 0 var(--neon-magenta); }
+
+/* ==========================================================================
+   HUD comandi presentazione
+   ========================================================================== */
+.controls{ position:absolute; z-index:120; bottom:14px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; gap:14px; padding:8px 14px;
+  background:rgba(10,3,18,.72); border:2px solid var(--magenta-soft);
+  font-family:var(--font-mono); color:var(--neon-yellow); letter-spacing:1px;
+  transition:opacity .4s ease; }
+.controls.hide{ opacity:0; pointer-events:none; }
+.controls button{ font-family:var(--font-mono); background:transparent; border:1px solid var(--magenta-soft);
+  color:var(--neon-yellow); padding:6px 10px; cursor:pointer; letter-spacing:1px; font-size:13px; }
+.controls button:hover{ background:var(--neon-magenta); color:var(--bg-deep); }
+.controls .count{ color:var(--neon-magenta); font-size:13px; min-width:54px; text-align:center; }
+
+/* dots */
+.dots{ position:absolute; z-index:120; top:16px; left:50%; transform:translateX(-50%);
+  display:flex; gap:9px; transition:opacity .4s ease; }
+.dots.hide{ opacity:0; }
+.dot{ width:11px; height:11px; border:2px solid var(--magenta-soft); background:transparent; cursor:pointer; }
+.dot.on{ background:var(--neon-yellow); border-color:var(--neon-yellow); box-shadow:0 0 8px var(--neon-yellow); }
+
+/* barra avanzamento autoplay */
+.progress{ position:absolute; z-index:120; top:0; left:0; height:3px; width:0;
+  background:var(--neon-yellow); box-shadow:0 0 10px var(--neon-yellow); }
+
+/* modalita' export PDF (nasconde HUD, usata da export_pdf.py) */
+body.export-mode .controls,
+body.export-mode .dots,
+body.export-mode .progress{ display:none !important; }
+body.export-mode{ cursor:default; }
+</style>
+</head>
+
+<body>
+<div class="deck" id="deck">
+  <canvas id="fx"></canvas>
+  <div class="bg-noise"></div>
+  <div class="vignette"></div>
+
+  <span class="corner tl"></span><span class="corner tr"></span>
+  <span class="corner bl"></span><span class="corner br"></span>
+
+  <div class="progress" id="progress"></div>
+  <div class="dots" id="dots"></div>
+
+  <div class="stage" id="stage">
+
+    <!-- =====================================================================
+         SLIDE 1 — COPERTINA / BOOT
+         ===================================================================== -->
+    <section class="slide" data-fx="particles" data-duration="11000">
+      <div class="eyebrow">&gt; THE DIGITAL SEER :: v1.0 :: KIOSK MODE<span class="blink">_</span></div>
+      <div class="term" id="bootTerm" data-boot></div>
+      <div class="spacer"></div>
+      <h1 class="title xl" data-text="THE DIGITAL SEER">THE DIGITAL SEER</h1>
+      <div class="sub">CHIROMANTE // INSTALLAZIONE INTERATTIVA</div>
+      <p class="lead" style="margin-top:18px"><span class="yellow">"DECRIPTA LA TUA MANO."</span> &nbsp;lascia che la rete legga il tuo palmo.</p>
+      <div class="foot"><span>&gt; @meirks_</span><span class="dim">meirks.xyz</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 2 — COS'E'
+         ===================================================================== -->
+    <section class="slide" data-fx="particles" data-duration="11000">
+      <div class="eyebrow">// COS'E'</div>
+      <h1 class="title lg">Un oracolo digitale<br>che <span class="mag">legge il palmo</span> della tua mano.</h1>
+      <div class="divider"></div>
+      <p class="lead">Metà chiromante esperto, metà interprete di segnali in una rete esoterica.
+      Il visitatore appoggia la mano sullo scanner: la rete mappa <span class="yellow">21 punti</span>,
+      calcola il suo profilo e genera una <span class="yellow">profezia unica</span>, un sigillo pixel
+      e un <span class="yellow">poster</span> da portare a casa.</p>
+      <div class="chips">
+        <span class="chip">RITUALE</span>
+        <span class="chip">PERSONALE 1/1</span>
+        <span class="chip">RETRO-FUTURO</span>
+        <span class="chip">SOUVENIR FISICO</span>
+      </div>
+      <div class="foot"><span>&gt; oracolo cyber-mistico</span><span class="dim">// chiromante</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 3 — IL RITUALE (pipeline)
+         ===================================================================== -->
+    <section class="slide" data-fx="particles" data-duration="12000">
+      <div class="eyebrow">// IL RITUALE &mdash; dal primo sguardo al souvenir</div>
+      <h1 class="title lg">Sette passi, un<span class="mag"> minuto</span>.</h1>
+      <div class="divider"></div>
+      <div class="flow">
+        <div class="step"><div class="n">01</div><div class="t">ATTRAZIONE</div><div class="d">Schermo CRT, "AVVICINATI ALLO SCANNER".</div><span class="wm">01</span></div>
+        <div class="step"><div class="n">02</div><div class="t">IDENTITA'</div><div class="d">Nome ed email: "CONNETTI LA TUA IDENTITA'".</div><span class="wm">02</span></div>
+        <div class="step"><div class="n">03</div><div class="t">SCANSIONE</div><div class="d">Scanner flatbed 300 DPI, sweep laser.</div><span class="wm">03</span></div>
+        <div class="step"><div class="n">04</div><div class="t">VISION</div><div class="d">21 landmark della mano, log a terminale.</div><span class="wm">04</span></div>
+        <div class="step"><div class="n">05</div><div class="t">UPLINK</div><div class="d">"CONNESSIONE ASTRALE", pioggia matrix.</div><span class="wm">05</span></div>
+        <div class="step"><div class="n">06</div><div class="t">RIVELAZIONE</div><div class="d">Stat, archetipo, profezia, sigillo.</div><span class="wm">06</span></div>
+        <div class="step"><div class="n">07</div><div class="t">SOUVENIR</div><div class="d">Poster stampato o via email.</div><span class="wm">07</span></div>
+      </div>
+      <p class="lead" style="margin:6px 0 0"><span class="muted">Un'esperienza compatta che si autoalimenta: appena uno finisce, il prossimo &egrave; gi&agrave; in fila.</span></p>
+      <div class="foot"><span>&gt; attrazione &rarr; rivelazione</span><span class="dim">~45s di reveal</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 4 — LA MACCHINA VEDE (scan / vision)
+         ===================================================================== -->
+    <section class="slide" data-fx="matrix" data-duration="11000">
+      <div class="eyebrow">// LA MACCHINA VEDE</div>
+      <div class="cols">
+        <div class="col">
+          <h1 class="title lg">Dalla pelle<br>ai <span class="mag">numeri</span>.</h1>
+          <p class="lead" style="margin-top:16px">Uno scanner flatbed cattura il palmo a <span class="yellow">300 DPI</span>.
+          La computer vision individua <span class="yellow">21 landmark</span> della mano e misura
+          le proporzioni: ogni linea diventa un dato.</p>
+          <div class="chips">
+            <span class="chip">MAPPATURA 300 DPI</span>
+            <span class="chip">21 LANDMARK</span>
+          </div>
+        </div>
+        <div class="col col-img dual" style="flex-direction:column; gap:14px">
+          <img src="./assets/original.jpg" alt="scansione grezza del palmo" />
+          <img src="./assets/enhanced_ai.jpg" alt="palmo elaborato dalla vision" />
+        </div>
+      </div>
+      <div class="foot"><span>&gt; vision_module :: mediapipe</span><span class="dim">// 21 landmark</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 5 — LE QUATTRO LINEE (stat)
+         ===================================================================== -->
+    <section class="slide" data-fx="particles" data-duration="12000">
+      <div class="eyebrow">// LE QUATTRO LINEE</div>
+      <h1 class="title lg">Quattro linee,<span class="mag"> quattro forze</span>.</h1>
+      <div class="divider"></div>
+      <div class="stats">
+        <div class="stat" data-value="7"><div class="stat__head"><span><span class="stat__label">ENERGIA VITALE</span> <span class="stat__sub">&mdash; linea della Vita</span></span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+        <div class="stat" data-value="8"><div class="stat__head"><span><span class="stat__label">INTUITO</span> <span class="stat__sub">&mdash; linea della Testa</span></span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+        <div class="stat" data-value="6"><div class="stat__head"><span><span class="stat__label">AFFINITA'</span> <span class="stat__sub">&mdash; linea del Cuore</span></span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+        <div class="stat" data-value="5"><div class="stat__head"><span><span class="stat__label">SORTE</span> <span class="stat__sub">&mdash; linea del Destino</span></span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+      </div>
+      <p class="lead" style="margin-top:18px"><span class="muted">I punteggi sono <span class="yellow">deterministici</span>: nascono dalla geometria della mano.
+      L'AI scrive soltanto l'<span class="yellow">archetipo</span> e la <span class="yellow">profezia</span>.</span></p>
+      <div class="foot"><span>&gt; geometria + GPT-4o</span><span class="dim">// punteggi 0-10</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 6 — LA RIVELAZIONE (lettura reale: Beatrice)
+         ===================================================================== -->
+    <section class="slide" data-fx="matrix" data-duration="15000">
+      <div class="eyebrow">// LA RIVELAZIONE &mdash; lettura reale</div>
+      <div class="cols">
+        <div class="col col-img bare">
+          <img src="./assets/palm_neon.png" alt="palmo neon di Beatrice" />
+        </div>
+        <div class="col">
+          <div class="idcard">
+            <div class="k">// UTENTE</div>
+            <div class="user">BEATRICE</div>
+            <div class="k">// ARCHETIPO</div>
+            <div class="arch">CUORE MAGNETICO</div>
+          </div>
+          <div class="stats" style="margin-top:16px">
+            <div class="stat" data-value="6"><div class="stat__head"><span class="stat__label">ENERGIA VITALE</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+            <div class="stat" data-value="8"><div class="stat__head"><span class="stat__label">INTUITO</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+            <div class="stat dom" data-value="9"><div class="stat__head"><span class="stat__label">AFFINITA'</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+            <div class="stat" data-value="6"><div class="stat__head"><span class="stat__label">SORTE</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="prophecy">
+        <div class="hdr">&gt; DOS_OUTPUT.LOG // PROFEZIA.exe</div>
+        <div class="txt" data-typewriter="Beatrice, la tua empatia è un faro che guida le connessioni nei labirinti del tempo. Tuttavia, non aspetti il favore degli astri, lo costruisci con le tue mani. Posizionati strategicamente, Beatrice, e lascia che l'universo faccia il resto."></div>
+      </div>
+      <div class="foot"><span>&gt; READING_ID :: BEATRICE//260622//001//0FF4</span><span class="dim">1/1 generato</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 7 — IL SOUVENIR (poster)
+         ===================================================================== -->
+    <section class="slide" data-fx="particles" data-duration="12000">
+      <div class="eyebrow">// IL SOUVENIR</div>
+      <div class="cols">
+        <div class="col col-img bare" style="flex:0 0 38%">
+          <img src="./assets/poster.png" alt="poster oracolare" style="max-height:74vh" />
+        </div>
+        <div class="col">
+          <h1 class="title lg">Porta a casa<br>il tuo <span class="mag">oracolo</span>.</h1>
+          <p class="lead" style="margin-top:16px">Ogni lettura diventa un <span class="yellow">poster</span> unico:
+          palmo neon, statistiche RPG, sigillo pixel e profezia.
+          Consegnato <span class="yellow">stampato</span> in loco oppure <span class="yellow">via email</span>.</p>
+          <div class="sigil">
+            <img src="./assets/wisp_x16.png" alt="sigillo pixel unico" />
+            <div class="cap">
+              <div class="l">// IL TUO SIGILLO UNICO</div>
+              <div class="g">1 / 1 &nbsp; GENERATO</div>
+            </div>
+          </div>
+          <div class="chips">
+            <span class="chip">PNG + PDF</span>
+            <span class="chip">STAMPA O EMAIL</span>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>&gt; poster_generator :: 1200x1800</span><span class="dim">// unico per ogni mano</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 8 — PER I TUOI EVENTI (setup / valore)
+         ===================================================================== -->
+    <section class="slide" data-fx="particles" data-duration="13000">
+      <div class="eyebrow">// PER I TUOI EVENTI E LOCALI</div>
+      <div class="cols">
+        <div class="col">
+          <h1 class="title lg">Un'attrazione<br>che <span class="mag">ferma la gente</span>.</h1>
+          <ul class="checks">
+            <li><b>Esperienza memorabile</b> &mdash; rituale di 1 minuto, fila che si autoalimenta.</li>
+            <li><b>Souvenir brandizzato</b> &mdash; ogni visitatore porta a casa un poster.</li>
+            <li><b>Contenuti social</b> &mdash; gate Instagram opzionale, condivisioni spontanee.</li>
+            <li><b>Bilingue IT / EN</b> &mdash; pronto per pubblico internazionale.</li>
+            <li><b>Plug &amp; play</b> &mdash; 1 scanner, 2 schermi, modalità kiosk H24.</li>
+          </ul>
+        </div>
+        <div class="col col-img">
+          <img src="./assets/operator.png" alt="pannello operatore" />
+        </div>
+      </div>
+      <div class="foot"><span>&gt; pannello operatore :: nome / lingua / luogo</span><span class="dim">// kiosk H24</span></div>
+    </section>
+
+    <!-- =====================================================================
+         SLIDE 9 — CONNETTITI (contatti + QR) — chiude e ricomincia
+         ===================================================================== -->
+    <section class="slide" data-fx="matrix" data-duration="14000">
+      <div class="eyebrow">// CONNETTITI</div>
+      <div class="cols">
+        <div class="col">
+          <h1 class="title xl" data-text="@meirks_">@meirks_</h1>
+          <p class="lead" style="margin-top:18px"><span class="yellow">meirks.xyz</span><br>mirkoditroia@gmail.com</p>
+          <p class="lead" style="margin-top:18px"><span class="mag">"lascia che la rete legga il tuo palmo."</span></p>
+          <div class="sub" style="margin-top:24px">FINE TRASMISSIONE // premi <span class="yellow">&rarr;</span> per ricominciare</div>
+        </div>
+        <div class="col">
+          <div class="qrs">
+            <div class="qr"><img src="./assets/instagram_qr.png" alt="QR Instagram" /><div class="lab">SEGUI<br>@MEIRKS_</div></div>
+            <div class="qr"><img src="./assets/paypal_qr.png" alt="QR PayPal" /><div class="lab">OFFRI UNA<br>BIRRA</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>&gt; THE DIGITAL SEER</span><span class="dim">v1.0 :: KIOSK MODE</span></div>
+    </section>
+
+  </div><!-- /stage -->
+
+  <div class="scanlines"></div>
+
+  <div class="controls" id="controls">
+    <button id="btnPrev" title="Indietro (&larr;)">&larr;</button>
+    <span class="count" id="count">01 / 09</span>
+    <button id="btnNext" title="Avanti (&rarr;)">&rarr;</button>
+    <button id="btnAuto" title="Play/Pausa (A)">&#9658; AUTO</button>
+    <button id="btnFull" title="Schermo intero (F)">&#9974; FULL</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   MOTORE PRESENTAZIONE
+   ============================================================================ */
+(function(){
+  "use strict";
+  const deck    = document.getElementById('deck');
+  const stage   = document.getElementById('stage');
+  const slides  = Array.from(stage.querySelectorAll('.slide'));
+  const dotsBox = document.getElementById('dots');
+  const progEl  = document.getElementById('progress');
+  const countEl = document.getElementById('count');
+  const controls= document.getElementById('controls');
+
+  let index = 0;
+  let autoplay = false;
+  let autoTimer = null;
+  let progTimer = null;
+  const pad = n => String(n).padStart(2,'0');
+
+  /* ---- dots ---- */
+  slides.forEach((_,i)=>{
+    const d = document.createElement('button');
+    d.className = 'dot'; d.title = 'Slide '+(i+1);
+    d.addEventListener('click', ()=>go(i));
+    dotsBox.appendChild(d);
+  });
+  const dots = Array.from(dotsBox.children);
+
+  /* ---- pre-costruzione stat: valore mostrato 06/10 ---- */
+  slides.forEach(s=>{
+    s.querySelectorAll('.stat').forEach(st=>{
+      const v = parseInt(st.getAttribute('data-value')||'0',10);
+      const valEl = st.querySelector('.stat__val');
+      if(valEl) valEl.textContent = pad(v)+'/10';
+    });
+  });
+
+  /* ---- typewriter ---- */
+  function typewriter(el){
+    const full = el.getAttribute('data-typewriter');
+    el.textContent = '';
+    let i = 0;
+    const cur = document.createElement('span'); cur.className='cursorbox';
+    el.appendChild(cur);
+    clearInterval(el._tw);
+    el._tw = setInterval(()=>{
+      if(i >= full.length){ clearInterval(el._tw); return; }
+      cur.insertAdjacentText('beforebegin', full[i]);
+      i++;
+    }, 34);
+  }
+
+  /* ---- boot terminal (slide 1) ---- */
+  const BOOT_LINES = [
+    {t:'> inizializzazione oracolo...', c:''},
+    {t:'> caricamento rete esoterica .... OK', c:''},
+    {t:'> calibrazione scanner 300 DPI .. OK', c:''},
+    {t:'> mediapipe :: 21 landmark ...... OK', c:''},
+    {t:'> RETE ESOTERICA ONLINE', c:'p'}
+  ];
+  function runBoot(el){
+    el.innerHTML=''; let li=0;
+    clearInterval(el._bt);
+    const cur=document.createElement('span'); cur.className='cursorbox';
+    el.appendChild(cur);
+    el._bt = setInterval(()=>{
+      if(li>=BOOT_LINES.length){ clearInterval(el._bt); return; }
+      const line=document.createElement('div');
+      if(BOOT_LINES[li].c==='p') line.className='p';
+      line.textContent=BOOT_LINES[li].t;
+      el.insertBefore(line, cur);
+      li++;
+    }, 520);
+  }
+
+  /* ---- attiva animazioni dentro la slide ---- */
+  function activateAnims(slide){
+    // stat bars
+    slide.querySelectorAll('.stat').forEach((st,k)=>{
+      const v = parseInt(st.getAttribute('data-value')||'0',10);
+      const fill = st.querySelector('.stat__fill');
+      if(fill){
+        fill.style.width='0%';
+        setTimeout(()=>{ fill.style.width=(Math.max(0,Math.min(10,v))*10)+'%'; }, 180 + k*140);
+      }
+    });
+    // step della pipeline (stagger)
+    slide.querySelectorAll('.step').forEach((stp,k)=>{
+      stp.style.animationDelay=(k*0.12)+'s';
+    });
+    // typewriter
+    const tw = slide.querySelector('[data-typewriter]');
+    if(tw) setTimeout(()=>typewriter(tw), 500);
+    // boot
+    const bt = slide.querySelector('[data-boot]');
+    if(bt) runBoot(bt);
+  }
+
+  /* ============================ FX di sfondo ============================ */
+  const canvas = document.getElementById('fx');
+  const ctx = canvas.getContext('2d');
+  let fxMode = 'particles';
+  let particles = [];
+  let drops = [];
+  const PAL = ['#FAFF00','#BC13FE','#00FFD4','#FF8C00'];
+
+  function resizeFx(){
+    canvas.width = deck.clientWidth;
+    canvas.height = deck.clientHeight;
+    initParticles(); initMatrix();
+  }
+  function initParticles(){
+    particles = [];
+    const n = Math.round(canvas.width/26);
+    for(let i=0;i<n;i++){
+      particles.push({
+        x:Math.random()*canvas.width, y:Math.random()*canvas.height,
+        s:Math.random()*2+1, vy:-(Math.random()*0.5+0.15),
+        vx:(Math.random()-0.5)*0.3, c:PAL[(Math.random()*PAL.length)|0],
+        a:Math.random()*0.6+0.2
+      });
+    }
+  }
+  function initMatrix(){
+    const cols = Math.floor(canvas.width/16);
+    drops = new Array(cols).fill(0).map(()=>Math.random()*-50);
+  }
+  const GLYPHS='アカサタナﾊﾏﾔﾗ01ABCDEF#@/<>*'.split('');
+
+  function draw(){
+    if(fxMode==='particles'){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(const p of particles){
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.y<-4){ p.y=canvas.height+4; p.x=Math.random()*canvas.width; }
+        ctx.globalAlpha=p.a; ctx.fillStyle=p.c;
+        ctx.fillRect(p.x,p.y,p.s,p.s);
+      }
+      ctx.globalAlpha=1;
+    } else if(fxMode==='matrix'){
+      ctx.fillStyle='rgba(20,7,31,0.18)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.font='14px "Share Tech Mono", monospace';
+      for(let i=0;i<drops.length;i++){
+        const ch=GLYPHS[(Math.random()*GLYPHS.length)|0];
+        const x=i*16, y=drops[i]*16;
+        ctx.fillStyle = Math.random()<0.12 ? '#FAFF00' : '#BC13FE';
+        ctx.fillText(ch,x,y);
+        if(y>canvas.height && Math.random()>0.975) drops[i]=0;
+        drops[i]+=0.6;
+      }
+    } else {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+    requestAnimationFrame(draw);
+  }
+
+  /* ============================ navigazione ============================ */
+  function go(i){
+    if(i<0) i=slides.length-1;
+    if(i>=slides.length) i=0;
+    slides[index].classList.remove('is-active','enter');
+    index=i;
+    const s=slides[index];
+    s.classList.add('is-active');
+    // forza il reflow per ri-triggerare il glitch d'ingresso
+    void s.offsetWidth; s.classList.add('enter');
+    dots.forEach((d,k)=>d.classList.toggle('on',k===index));
+    countEl.textContent = pad(index+1)+' / '+pad(slides.length);
+    fxMode = s.getAttribute('data-fx') || 'none';
+    activateAnims(s);
+    if(autoplay) scheduleAuto(s);
+  }
+  const next=()=>go(index+1);
+  const prev=()=>go(index-1);
+
+  /* ---- autoplay con barra di avanzamento ---- */
+  function scheduleAuto(slide){
+    clearTimeout(autoTimer); clearInterval(progTimer);
+    const dur = parseInt(slide.getAttribute('data-duration')||'9000',10);
+    let t0=performance.now();
+    progEl.style.width='0%';
+    progTimer=setInterval(()=>{
+      const p=Math.min(1,(performance.now()-t0)/dur);
+      progEl.style.width=(p*100)+'%';
+    },50);
+    autoTimer=setTimeout(next, dur);
+  }
+  function setAuto(on){
+    autoplay=on;
+    document.getElementById('btnAuto').innerHTML = on ? '&#10073;&#10073; PAUSA' : '&#9658; AUTO';
+    if(on){ scheduleAuto(slides[index]); }
+    else { clearTimeout(autoTimer); clearInterval(progTimer); progEl.style.width='0%'; }
+  }
+
+  /* ============================ controlli ============================ */
+  document.getElementById('btnPrev').addEventListener('click',()=>{prev(); if(autoplay)scheduleAuto(slides[index]);});
+  document.getElementById('btnNext').addEventListener('click',()=>{next(); if(autoplay)scheduleAuto(slides[index]);});
+  document.getElementById('btnAuto').addEventListener('click',()=>setAuto(!autoplay));
+  document.getElementById('btnFull').addEventListener('click',toggleFull);
+
+  function toggleFull(){
+    if(!document.fullscreenElement){ deck.requestFullscreen?.(); }
+    else { document.exitFullscreen?.(); }
+  }
+
+  // click sul palco = avanti (ma non sui controlli/dots)
+  stage.addEventListener('click', e=>{ next(); if(autoplay)scheduleAuto(slides[index]); });
+
+  document.addEventListener('keydown', e=>{
+    switch(e.key){
+      case 'ArrowRight': case ' ': case 'PageDown': e.preventDefault(); next(); if(autoplay)scheduleAuto(slides[index]); break;
+      case 'ArrowLeft': case 'PageUp': prev(); if(autoplay)scheduleAuto(slides[index]); break;
+      case 'a': case 'A': setAuto(!autoplay); break;
+      case 'f': case 'F': toggleFull(); break;
+      case 'Home': go(0); break;
+      case 'End': go(slides.length-1); break;
+      default:
+        if(/^[1-9]$/.test(e.key)){ const n=parseInt(e.key,10)-1; if(n<slides.length) go(n); }
+    }
+  });
+
+  /* ---- auto-hide controlli (feel kiosk) ---- */
+  let hideTimer=null;
+  function showUI(){
+    controls.classList.remove('hide'); dotsBox.classList.remove('hide');
+    deck.style.cursor='default';
+    clearTimeout(hideTimer);
+    hideTimer=setTimeout(()=>{
+      controls.classList.add('hide'); dotsBox.classList.add('hide');
+      deck.style.cursor='none';
+    },3000);
+  }
+  ['mousemove','click','keydown'].forEach(ev=>document.addEventListener(ev,showUI));
+
+  /* ============================ avvio ============================ */
+  window.addEventListener('resize', resizeFx);
+  resizeFx();
+  requestAnimationFrame(draw);
+
+  const urlParams = new URLSearchParams(location.search);
+  const exportMode = urlParams.has('export');
+  if (exportMode) document.body.classList.add('export-mode');
+
+  const startSlide = urlParams.has('slide') ? parseInt(urlParams.get('slide'), 10) : 0;
+  go(Number.isFinite(startSlide) ? startSlide : 0);
+
+  /* API per export_pdf.py */
+  window.PresentationDeck = { go, count: slides.length, ready: true };
+
+  if (!exportMode) showUI();
+})();
+</script>
+</body>
+</html>
