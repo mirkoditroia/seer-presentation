@@ -220,6 +220,49 @@ h1.title[data-text]::after{
 
 .poster-hero{ max-width:100%; max-height:74vh; object-fit:contain; }
 
+/* stack layout (slide rivelazione / souvenir) */
+.m-stack{
+  display:grid;
+  gap:clamp(16px,2vw,28px);
+  flex:1 1 auto;
+  min-height:0;
+  align-items:start;
+}
+.m-figure{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0;
+}
+.m-figure img{
+  max-width:100%;
+  max-height:62vh;
+  object-fit:contain;
+  border:3px solid var(--neon-magenta);
+  box-shadow:0 0 26px rgba(188,19,254,.35), 0 0 60px rgba(0,0,0,.6);
+}
+.m-figure.bare img{ border:none; box-shadow:0 0 40px rgba(188,19,254,.25); }
+
+.slide--reveal .m-stack{
+  grid-template-columns:1fr 1fr;
+  grid-template-areas:
+    "img info"
+    "img stats"
+    "prophecy prophecy";
+}
+.slide--reveal .m-figure{ grid-area:img; }
+.slide--reveal .idcard{ grid-area:info; }
+.slide--reveal .stats{ grid-area:stats; margin-top:0 !important; }
+.slide--reveal .prophecy{ grid-area:prophecy; margin-top:0; }
+
+.slide--souvenir .m-stack{
+  grid-template-columns:38% 1fr;
+  grid-template-areas:"poster copy";
+  align-items:center;
+}
+.slide--souvenir .m-figure{ grid-area:poster; }
+.slide--souvenir .m-copy{ grid-area:copy; }
+
 /* footer comune slide */
 .foot{ position:absolute; left:clamp(36px,5vw,72px); right:clamp(36px,5vw,72px);
   bottom:clamp(20px,2.4vw,34px); display:flex; justify-content:space-between;
@@ -398,14 +441,52 @@ body.export-mode{ cursor:default; }
   .slide{
     padding:clamp(14px,4vw,24px);
     padding-top:max(42px, env(safe-area-inset-top, 0px) + 36px);
-    padding-bottom:max(104px, env(safe-area-inset-bottom, 0px) + 92px);
+    padding-bottom:max(72px, env(safe-area-inset-bottom, 0px) + 64px);
+    overflow:hidden;
+    justify-content:flex-start;
+    gap:0;
+  }
+
+  .slide .eyebrow{
+    flex:0 0 auto;
+    margin-bottom:10px;
+  }
+
+  .m-stack{
+    flex:1 1 auto;
+    min-height:0;
     overflow-x:hidden;
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
-    justify-content:flex-start;
-    gap:12px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    padding-bottom:8px;
   }
+  .m-stack > *{ flex-shrink:0; }
+
+  .slide:not(.slide--reveal):not(.slide--souvenir){
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .slide--reveal .m-stack,
+  .slide--souvenir .m-stack{
+    display:flex;
+    flex-direction:column;
+    grid-template-columns:none;
+    grid-template-areas:none;
+    align-items:stretch;
+  }
+
+  .slide--reveal .m-figure img{ max-height:22vh; }
+  .slide--reveal .prophecy{ margin-top:0; }
+
+  .slide--souvenir .m-copy{ order:1; }
+  .slide--souvenir .m-figure{ order:2; }
+  .slide--souvenir .poster-hero{ max-height:30vh; }
 
   h1.title.xl{ font-size:clamp(17px,6.8vw,36px); letter-spacing:1px; }
   h1.title.lg{ font-size:clamp(15px,5.2vw,28px); letter-spacing:1px; }
@@ -425,33 +506,6 @@ body.export-mode{ cursor:default; }
   .col-img img{ max-height:36vh; }
   .col-img.dual{ flex-direction:row !important; gap:10px !important; }
   .col-img.dual img{ max-height:22vh; flex:1 1 0; min-width:0; }
-
-  /* slide 6 — rivelazione: stack pulito, niente overlap */
-  .slide--reveal .cols{ display:contents; }
-  .slide--reveal{ gap:14px; justify-content:flex-start; }
-  .slide--reveal .col-img img{ max-height:26vh; }
-  .slide--reveal .idcard{ margin-bottom:0; }
-  .slide--reveal .stats{ margin-top:12px !important; }
-  .slide--reveal .prophecy{
-    margin-top:0;
-    flex:0 0 auto;
-    position:relative;
-    z-index:2;
-  }
-
-  /* slide 7 — souvenir: titolo prima, poster più piccolo */
-  .slide--souvenir .cols{
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-  }
-  .slide--souvenir .col:not(.col-img){ order:1; }
-  .slide--souvenir .col-img{ order:2; }
-  .slide--souvenir .poster-hero{ max-height:34vh; }
-  .slide--souvenir h1.title{ margin-bottom:4px; }
-  .slide--souvenir .lead{ margin-top:10px !important; }
-  .slide--souvenir .sigil{ margin-top:12px; }
-  .slide--souvenir .chips{ margin-top:12px; }
 
   .flow{
     display:grid;
@@ -495,11 +549,11 @@ body.export-mode{ cursor:default; }
   .foot{
     position:relative;
     left:auto; right:auto; bottom:auto;
-    margin-top:16px;
+    margin-top:8px;
     font-size:10px;
     letter-spacing:1px;
     padding-top:8px;
-    flex-shrink:0;
+    flex:0 0 auto;
   }
 
   .dots{
@@ -650,28 +704,26 @@ body.export-mode{ cursor:default; }
          ===================================================================== -->
     <section class="slide slide--reveal" data-fx="matrix" data-duration="15000">
       <div class="eyebrow">// LA RIVELAZIONE &mdash; lettura reale</div>
-      <div class="cols">
-        <div class="col col-img bare">
+      <div class="m-stack">
+        <figure class="m-figure bare">
           <img src="./assets/palm_neon.png" alt="palmo neon di Beatrice" />
+        </figure>
+        <div class="idcard">
+          <div class="k">// UTENTE</div>
+          <div class="user">BEATRICE</div>
+          <div class="k">// ARCHETIPO</div>
+          <div class="arch">CUORE MAGNETICO</div>
         </div>
-        <div class="col">
-          <div class="idcard">
-            <div class="k">// UTENTE</div>
-            <div class="user">BEATRICE</div>
-            <div class="k">// ARCHETIPO</div>
-            <div class="arch">CUORE MAGNETICO</div>
-          </div>
-          <div class="stats" style="margin-top:16px">
-            <div class="stat" data-value="6"><div class="stat__head"><span class="stat__label">ENERGIA VITALE</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
-            <div class="stat" data-value="8"><div class="stat__head"><span class="stat__label">INTUITO</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
-            <div class="stat dom" data-value="9"><div class="stat__head"><span class="stat__label">AFFINITA'</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
-            <div class="stat" data-value="6"><div class="stat__head"><span class="stat__label">SORTE</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
-          </div>
+        <div class="stats">
+          <div class="stat" data-value="6"><div class="stat__head"><span class="stat__label">ENERGIA VITALE</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+          <div class="stat" data-value="8"><div class="stat__head"><span class="stat__label">INTUITO</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+          <div class="stat dom" data-value="9"><div class="stat__head"><span class="stat__label">AFFINITA'</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
+          <div class="stat" data-value="6"><div class="stat__head"><span class="stat__label">SORTE</span><span class="stat__val"></span></div><div class="stat__track"><div class="stat__fill"></div></div></div>
         </div>
-      </div>
-      <div class="prophecy">
-        <div class="hdr">&gt; DOS_OUTPUT.LOG // PROFEZIA.exe</div>
-        <div class="txt" data-typewriter="Beatrice, la tua empatia è un faro che guida le connessioni nei labirinti del tempo. Tuttavia, non aspetti il favore degli astri, lo costruisci con le tue mani. Posizionati strategicamente, Beatrice, e lascia che l'universo faccia il resto."></div>
+        <div class="prophecy">
+          <div class="hdr">&gt; DOS_OUTPUT.LOG // PROFEZIA.exe</div>
+          <div class="txt" data-typewriter="Beatrice, la tua empatia è un faro che guida le connessioni nei labirinti del tempo. Tuttavia, non aspetti il favore degli astri, lo costruisci con le tue mani. Posizionati strategicamente, Beatrice, e lascia che l'universo faccia il resto."></div>
+        </div>
       </div>
       <div class="foot"><span>&gt; READING_ID :: BEATRICE//260622//001//0FF4</span><span class="dim">1/1 generato</span></div>
     </section>
@@ -681,11 +733,8 @@ body.export-mode{ cursor:default; }
          ===================================================================== -->
     <section class="slide slide--souvenir" data-fx="particles" data-duration="12000">
       <div class="eyebrow">// IL SOUVENIR</div>
-      <div class="cols">
-        <div class="col col-img bare" style="flex:0 0 38%">
-          <img src="./assets/poster.png" alt="poster oracolare" class="poster-hero" />
-        </div>
-        <div class="col">
+      <div class="m-stack">
+        <div class="m-copy">
           <h1 class="title lg">Porta a casa<br>il tuo <span class="mag">oracolo</span>.</h1>
           <p class="lead" style="margin-top:16px">Ogni lettura diventa un <span class="yellow">poster</span> unico:
           palmo neon, statistiche RPG, sigillo pixel e profezia.
@@ -702,6 +751,9 @@ body.export-mode{ cursor:default; }
             <span class="chip">STAMPA O EMAIL</span>
           </div>
         </div>
+        <figure class="m-figure bare">
+          <img src="./assets/poster.png" alt="poster oracolare" class="poster-hero" />
+        </figure>
       </div>
       <div class="foot"><span>&gt; poster_generator :: 1200x1800</span><span class="dim">// unico per ogni mano</span></div>
     </section>
