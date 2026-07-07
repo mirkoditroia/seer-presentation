@@ -218,6 +218,8 @@ h1.title[data-text]::after{
 .col-img.bare img{ border:none; box-shadow:0 0 40px rgba(188,19,254,.25); }
 .col-img.dual img{ max-height:31vh; }
 
+.poster-hero{ max-width:100%; max-height:74vh; object-fit:contain; }
+
 /* footer comune slide */
 .foot{ position:absolute; left:clamp(36px,5vw,72px); right:clamp(36px,5vw,72px);
   bottom:clamp(20px,2.4vw,34px); display:flex; justify-content:space-between;
@@ -396,11 +398,13 @@ body.export-mode{ cursor:default; }
   .slide{
     padding:clamp(14px,4vw,24px);
     padding-top:max(42px, env(safe-area-inset-top, 0px) + 36px);
-    padding-bottom:max(88px, env(safe-area-inset-bottom, 0px) + 76px);
+    padding-bottom:max(104px, env(safe-area-inset-bottom, 0px) + 92px);
     overflow-x:hidden;
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;
+    justify-content:flex-start;
+    gap:12px;
   }
 
   h1.title.xl{ font-size:clamp(17px,6.8vw,36px); letter-spacing:1px; }
@@ -414,11 +418,40 @@ body.export-mode{ cursor:default; }
     flex-direction:column;
     gap:16px;
     align-items:stretch;
+    flex:0 0 auto;
+    min-height:auto;
   }
   .cols .col[style*="flex:0"]{ flex:1 1 auto !important; }
   .col-img img{ max-height:36vh; }
   .col-img.dual{ flex-direction:row !important; gap:10px !important; }
   .col-img.dual img{ max-height:22vh; flex:1 1 0; min-width:0; }
+
+  /* slide 6 — rivelazione: stack pulito, niente overlap */
+  .slide--reveal .cols{ display:contents; }
+  .slide--reveal{ gap:14px; justify-content:flex-start; }
+  .slide--reveal .col-img img{ max-height:26vh; }
+  .slide--reveal .idcard{ margin-bottom:0; }
+  .slide--reveal .stats{ margin-top:12px !important; }
+  .slide--reveal .prophecy{
+    margin-top:0;
+    flex:0 0 auto;
+    position:relative;
+    z-index:2;
+  }
+
+  /* slide 7 — souvenir: titolo prima, poster più piccolo */
+  .slide--souvenir .cols{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+  .slide--souvenir .col:not(.col-img){ order:1; }
+  .slide--souvenir .col-img{ order:2; }
+  .slide--souvenir .poster-hero{ max-height:34vh; }
+  .slide--souvenir h1.title{ margin-bottom:4px; }
+  .slide--souvenir .lead{ margin-top:10px !important; }
+  .slide--souvenir .sigil{ margin-top:12px; }
+  .slide--souvenir .chips{ margin-top:12px; }
 
   .flow{
     display:grid;
@@ -615,7 +648,7 @@ body.export-mode{ cursor:default; }
     <!-- =====================================================================
          SLIDE 6 — LA RIVELAZIONE (lettura reale: Beatrice)
          ===================================================================== -->
-    <section class="slide" data-fx="matrix" data-duration="15000">
+    <section class="slide slide--reveal" data-fx="matrix" data-duration="15000">
       <div class="eyebrow">// LA RIVELAZIONE &mdash; lettura reale</div>
       <div class="cols">
         <div class="col col-img bare">
@@ -646,11 +679,11 @@ body.export-mode{ cursor:default; }
     <!-- =====================================================================
          SLIDE 7 — IL SOUVENIR (poster)
          ===================================================================== -->
-    <section class="slide" data-fx="particles" data-duration="12000">
+    <section class="slide slide--souvenir" data-fx="particles" data-duration="12000">
       <div class="eyebrow">// IL SOUVENIR</div>
       <div class="cols">
         <div class="col col-img bare" style="flex:0 0 38%">
-          <img src="./assets/poster.png" alt="poster oracolare" style="max-height:74vh" />
+          <img src="./assets/poster.png" alt="poster oracolare" class="poster-hero" />
         </div>
         <div class="col">
           <h1 class="title lg">Porta a casa<br>il tuo <span class="mag">oracolo</span>.</h1>
